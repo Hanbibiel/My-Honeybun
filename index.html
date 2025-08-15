@@ -316,10 +316,16 @@ let width = 0, height = 0;
 let stars = [];
 // 🎵 Sound effects array
 const soundFiles = [
-  "Sounds/sound1.mp3",
-  "Sounds/sound2.mp3",
-  "Sounds/sound3.mp3"
+  "Sounds/sounds1.mp3",
+  "Sounds/sounds2.mp3",
+  "Sounds/sounds3.mp3"
 ];
+
+const clickSounds = soundFiles.map(file => {
+    const audio = new Audio(file);
+    audio.preload = 'auto';
+    return audio;
+});
 
 //  Play a random sound when a star is clicked
 function playRandomSound() {
@@ -344,10 +350,14 @@ resize();
 // create stars
 function createStars() {
   stars = [];
+  const marginX = width * 0.125;  // 12.5% margin on left and right
+  const marginY = height * 0.125; // 12.5% margin on top and bottom
+
   for (let i = 0; i < memories.length; i++) {
-    const cx = Math.random() * width;
-    const cy = Math.random() * height;
+    const cx = marginX + Math.random() * (width * 0.75);  // 75% of width
+    const cy = marginY + Math.random() * (height * 0.75); // 75% of height
     const size = 1.5 + Math.random() * 2.5;
+
     stars.push({
       x: cx,
       y: cy,
@@ -449,29 +459,29 @@ requestAnimationFrame(draw);
 // INTERACTION HANDLERS
 // ------------------------------
 canvas.addEventListener('pointerdown', e => {
-  const rect = canvas.getBoundingClientRect();
-  const x = e.clientX - rect.left;
-  const y = e.clientY - rect.top;
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
 
-  let nearest = null, dmin = Infinity;
-  for (let s of stars) {
-    const dx = s.x - x, dy = s.y - y;
-    const d = Math.sqrt(dx * dx + dy * dy);
-    if (d < dmin) { 
-      dmin = d; 
-      nearest = s; 
+    let nearest = null, dmin = Infinity;
+    for (let s of stars) {
+        const dx = s.x - x, dy = s.y - y;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        if (d < dmin) { 
+            dmin = d; 
+            nearest = s; 
+        }
     }
-  }
 
-  if (nearest && dmin <= Math.max(18, (width + height) / 150)) {
-    // Play a random sound
-    const randomSound = soundFiles[Math.floor(Math.random() * soundFiles.length)];
-    const audio = new Audio(randomSound);
-    audio.play();
+    if (nearest && dmin <= Math.max(18, (width + height) / 150)) {
+        // Play random sound from preloaded sounds
+        const randomSound = clickSounds[Math.floor(Math.random() * clickSounds.length)];
+        randomSound.currentTime = 0; // Reset sound to start
+        randomSound.play().catch(err => console.log('Audio play error:', err));
 
-    // Open the modal for this star
-    openModal(nearest.memoryIndex);
-  }
+        // Open the modal for this star
+        openModal(nearest.memoryIndex);
+    }
 });
 // ------------------------------
 // MODAL LOGIC
