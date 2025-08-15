@@ -1,0 +1,535 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Story in the Stars — A Keepsake</title>
+<style>
+/* ------------------------------
+   CSS VARIABLES & BASE STYLES
+------------------------------ */
+:root {
+  --bg: #050814;
+  --overlay-bg: rgba(0,0,0,0.35);
+  --accent: #b0d7ff;
+  --glass: rgba(255,255,255,0.04);
+}
+* { box-sizing: border-box; }
+html, body { height: 100%; margin: 0; }
+body {
+  font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+  color: #e9f0ff;
+  background: var(--bg);
+  overflow: hidden;
+}
+/* ------------------------------
+   CANVAS & LAYOUT ELEMENTS
+------------------------------ */
+canvas#starfield {
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.header {
+  position: fixed;
+  top: 20px;
+  left: 50%;
+  transform: translateX(-50%);
+  text-align: center;
+  z-index: 20;
+  color: #dbeeff;
+  padding: 8px 14px;
+  border-radius: 12px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  backdrop-filter: blur(6px);
+  box-shadow: 0 6px 20px rgba(0,0,0,0.5);
+}
+.header h1 { margin: 0; font-size: 18px; letter-spacing: 0.6px; }
+.header p { margin: 4px 0 0; font-size: 13px; opacity: 0.9; }
+.controls {
+  position: fixed;
+  right: 20px;
+  top: 20px;
+  z-index: 20;
+  display: flex;
+  gap: 8px;
+  align-items: center;
+}
+.btn {
+  background: var(--glass);
+  border: none;
+  color: var(--accent);
+  padding: 8px 12px;
+  border-radius: 10px;
+  cursor: pointer;
+  font-weight: 600;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.4);
+}
+.btn:active { transform: translateY(1px); }
+.note {
+  position: fixed;
+  bottom: 20px;
+  width: 100%;
+  text-align: center;
+  font-size: 13px;
+  color: #bcd7ff;
+  z-index: 20;
+}
+/* ------------------------------
+   MODAL STYLES
+------------------------------ */
+.modal img {
+  max-width: 100%;
+  max-height: 70vh; /* Keeps it from overflowing the screen vertically */
+  object-fit: contain;
+  border-radius: 10px;
+  box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.3);
+  display: block;
+  margin: 0 auto;
+}
+/* Modal background fade-in */
+
+#modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 30;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity .25s ease;
+}
+#modal.open { opacity: 1; pointer-events: auto; }
+.modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(rgba(2,6,23,0.6), rgba(2,6,23,0.8));
+  backdrop-filter: blur(6px);
+}
+.modal-card {
+  position: relative;
+  width: min(920px,95%);
+  max-height: 85vh;
+  overflow: auto;
+  border-radius: 12px;
+  padding: 18px;
+  background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.01));
+  box-shadow: 0 10px 40px rgba(0,0,0,0.6);
+  color: #eaf5ff;
+  display: grid;
+  grid-template-columns: 1fr 320px;
+  gap: 18px;
+  align-items: start;
+  margin: auto;
+  transform: translateY(6px);
+  transition: transform .2s ease;
+}
+@media (max-width:800px) {
+  .modal-card { grid-template-columns: 1fr; padding: 14px; }
+  .header h1 { font-size: 16px; }
+}
+.modal-media img {
+  width: 100%;
+  height: auto;
+  border-radius: 8px;
+  display: block;
+  max-height: 65vh;
+  object-fit: cover;
+}
+.modal {
+  display: none; /* Hidden by default */
+  position: fixed;
+  z-index: 10;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  overflow: auto;
+  background-color: rgba(0, 0, 0, 0.8);
+  animation: fadeIn 0.4s ease forwards;
+}
+/* Image zoom effect */
+.modal img {
+  max-width: 100%;
+  max-height: 70vh;
+  object-fit: contain;
+  border-radius: 10px;
+  box-shadow: 0px 4px 15px rgba(0, 0, 0, 0.3);
+  display: block;
+  margin: 0 auto;
+  transform: scale(0.95);
+  opacity: 0;
+  animation: zoomIn 0.3s ease forwards;
+  animation-delay: 0.1s; /* Slight delay so background appears first */
+}
+
+/* Fade-in background */
+@keyframes fadeIn {
+  from { background-color: rgba(0, 0, 0, 0); }
+  to { background-color: rgba(0, 0, 0, 0.8); }
+}
+
+/* Zoom-in image */
+@keyframes zoomIn {
+  to {
+    transform: scale(1);
+    opacity: 1;
+  }
+}
+
+.modal-body h2 { margin: 0 0 8px; font-size: 18px; }
+.modal-body p { margin: 0 0 10px; line-height: 1.45; color: #d7e9ff; }
+.meta { font-size: 13px; opacity: 0.85; margin-bottom: 12px; }
+.modal-actions { display: flex; gap: 8px; margin-top: 8px; }
+.icon-btn {
+  border-radius: 8px;
+  padding: 8px;
+  border: none;
+  background: rgba(255,255,255,0.02);
+  color: var(--accent);
+  cursor: pointer;
+}
+.close-btn {
+  position: absolute;
+  right: 10px;
+  top: 10px;
+  background: transparent;
+  border: none;
+  color: #dbeeff;
+  font-size: 20px;
+  cursor: pointer;
+}
+.small { font-size: 12px; opacity: 0.9; }
+.legend { font-size: 12px; opacity: 0.9; color: #cde6ff; }
+</style>
+</head>
+<audio id="bgMusic" src="audio/bg.mp3" loop></audio>
+<body>
+ 
+
+<!-- ------------------------------
+     STARFIELD CANVAS
+------------------------------ -->
+<canvas id="starfield" aria-hidden="true"></canvas>
+<!-- ------------------------------
+     HEADER
+------------------------------ -->
+<div class="header" role="banner">
+  <h1>Our Lovely Memories</h1>
+  <p class="small">Click a star to open a memory.</p>
+</div>
+<!-- ------------------------------
+     CONTROLS
+------------------------------ -->
+<div class="controls" role="region" aria-label="controls">
+  <button id="audioToggle" class="btn small">Toggle music</button>
+  <button id="shuffleBtn" class="btn small">Shuffle stars</button>
+</div>
+<!-- ------------------------------
+     MODAL STRUCTURE
+------------------------------ -->
+<div id="modal" aria-hidden="true">
+  <div class="modal-backdrop"></div>
+  <article class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <button class="close-btn" aria-label="Close" id="modalClose">&times;</button>
+    <section class="modal-media">
+      <img id="modalImg" src="" alt="">
+    </section>
+    <section class="modal-body">
+      <h2 id="modalTitle">Title</h2>
+      <div class="meta" id="modalDate">Date</div>
+      <p id="modalText">Message</p>
+      <div class="modal-actions">
+        <button id="prevBtn" class="icon-btn" aria-label="Previous memory">&larr; Prev</button>
+        <button id="nextBtn" class="icon-btn" aria-label="Next memory">Next &rarr;</button>
+      </div>
+    </section>
+  </article>
+</div>
+<!-- ------------------------------
+     FOOTER NOTE
+------------------------------ -->
+<p class="note">Tap a star to open it.</p>
+<script>
+
+  const music = document.getElementById('bgMusic');
+music.volume = 0; // Start silent
+
+document.addEventListener('click', () => {
+    if (music.paused) {
+        music.play().catch(err => console.log(err));
+
+        let volume = 0;
+        const fadeIn = setInterval(() => {
+            if (volume < 1) {
+                volume += 0.01;
+                music.volume = Math.min(volume, 0.4);
+            } else {
+                clearInterval(fadeIn);
+            }
+        }, 50);
+    }
+});
+
+// ------------------------------
+// CONFIGURATION & DATA
+// ------------------------------
+
+const memories = [
+  { title: "Our First Meeting", date: "March 4, 2025", text: "We met in a classic game, the day where i said the first 'i love you'(couldn't find exact ss haha)", img: "images/1.jpg" },
+  { title: "Our First Matching Pfp", date: "March 8, 2025", text: "Our first late night conversation as we share our first matching pfp", img: "images/2.jpg" },
+  { title: "The First time I've Seen Your Beautiful Face", date: "March 10, 2025", text: "The way my heart skipped a beat when i saw you was such a memorable moment of mine.", img: "images/3.jpg" },
+  { title: "Our First Fight", date: "March 12, 2025", text: "The day where we finally shared how we felt honestly as well as me calling you my goodgirl", img: "images/4.jpg" },
+  { title: "The First time i Heard your Voice", date: "March 13, 2025", text: "Let your voice be the music to my ears.", img: "images/5.jpg" },
+  { title: "The Day We Became Lovers", date: "March 15, 2025", text: "The day when my heart became fully yours, and yours mine", img: "images/6.jpg" },
+  { title: "Mommy", date: "March 17, 2025", text: "What did you just call me??", img: "images/7.jpg" },
+  { title: "My Favourite Wallpaper", date: "March 18, 2025", text: "The most beautiful eyes i've ever seen.", img: "images/8.jpg" },
+  { title: "The First Gift You've Given Me", date: "March 23, 2025", text: "I was so surprised and tbh felt a little awkward but i was so happy haha, ok pindita.", img: "images/9.jpg" },
+  { title: "The Day We Had Our Flower Affinity", date: "March 27, 2025", text: "A really happy moment for me, now i can introduce you to everyone as my woman.", img: "images/10.jpg" },
+  { title: "Our First Roblox Night", date: "April 2, 2025", text: "You watched me die infront of you and made fun of my avatar ahaha.", img: "images/11.jpg" },
+  { title: "Menace Lana", date: "April 12, 2025", text: "How could you do this to the poor cable.", img: "images/12.jpg" },
+  { title: "Your Jerkimus Prime <3", date: "April 19, 2025", text: "Yes im yours.", img: "images/13.jpg" },
+  { title: "Wanna get BalJed?", date: "April 21, 2025", text: "The day i have succesfully BalJed you.", img: "images/14.jpg" },
+  { title: "'Attemping' to Draw your Gorgoes Eyes", date: "April 23, 2025", text: "No ammount of artistic skills could ever draw those captivating eyes.", img: "images/15.jpg" },
+  { title: "Little Boy", date: "May 2, 2025", text: "I'm gonna touch you.", img: "images/16.jpg" },
+  { title: "Excuse Me??", date: "May 13, 2025", text: "Explain yourself Maria, im 12 years old.", img: "images/17.jpg" },
+  { title: "Till Lanademann", date: "May 14, 2025", text: "Will you sing Rammstein songs for me?", img: "images/18.jpg" },
+  { title: "They Are Not Small.", date: "May 23, 2025", text: "This Shit is HUUUUUGE!!", img: "images/19.jpg" },
+  { title: "My Favourite Edit of Yours", date: "June 8, 2025", text: "lana banana >>>>", img: "images/20.jpg" },
+  { title: "My Favourite Matching Pfp", date: "June 8, 2025", text: "I love spending everyday with you.", img: "images/21.jpg" },
+  { title: "Maria Tweaking", date: "June 14, 2025", text: "Are you okay baby??", img: "images/22.jpg" },
+  { title: "Play in Bed??", date: "June 14, 2025", text: "Play mlbb in bed ofc, you dirty minded.", img: "images/23.jpg" },
+  { title: "Mwah", date: "July 9, 2025", text: "I'll destroy those kissable lips.", img: "images/24.jpg" },
+];
+
+const backgroundAudio = "audio/bg.3.mp3"; // set audio file path here to enable music
+// ------------------------------
+// CANVAS STARFIELD SETUP
+// ------------------------------
+const canvas = document.getElementById('starfield');
+const ctx = canvas.getContext('2d', { alpha: true });
+let DPR = Math.max(1, window.devicePixelRatio || 1);
+let width = 0, height = 0;
+let stars = [];
+// 🎵 Sound effects array
+const soundFiles = [
+  "Sounds/sound1.mp3",
+  "Sounds/sound2.mp3",
+  "Sounds/sound3.mp3"
+];
+
+//  Play a random sound when a star is clicked
+function playRandomSound() {
+    const randomIndex = Math.floor(Math.random() * clickSounds.length);
+    clickSounds[randomIndex].currentTime = 0; // restart sound
+    clickSounds[randomIndex].play();
+}
+function resize() {
+  DPR = Math.max(1, window.devicePixelRatio || 1);
+  width = Math.floor(window.innerWidth);
+  height = Math.floor(window.innerHeight);
+  canvas.width = Math.floor(width * DPR);
+  canvas.height = Math.floor(height * DPR);
+  canvas.style.width = width + 'px';
+  canvas.style.height = height + 'px';
+  ctx.setTransform(DPR, 0, 0, DPR, 0, 0);
+}
+window.addEventListener('resize', resize);
+resize();
+
+
+// create stars
+function createStars() {
+  stars = [];
+  for (let i = 0; i < memories.length; i++) {
+    const cx = Math.random() * width;
+    const cy = Math.random() * height;
+    const size = 1.5 + Math.random() * 2.5;
+    stars.push({
+      x: cx,
+      y: cy,
+      baseSize: size,
+      twinkleSpeed: 0.01 + Math.random() * 0.03,
+      phase: Math.random() * Math.PI * 2,
+      memoryIndex: i
+    });
+  }
+}
+
+createStars();
+
+function drawSparklyStar(ctx, x, y, r, rotation = 0) {
+  // Soft halo
+  const halo = ctx.createRadialGradient(x, y, 0, x, y, r * 6);
+  halo.addColorStop(0, 'rgba(255,255,255,0.95)');
+  halo.addColorStop(0.15, 'rgba(210,230,255,0.8)');
+  halo.addColorStop(0.55, 'rgba(160,190,255,0.15)');
+  halo.addColorStop(1, 'rgba(10,20,40,0)');
+  ctx.fillStyle = halo;
+  ctx.beginPath();
+  ctx.arc(x, y, r * 3, 0, Math.PI * 2);
+  ctx.fill();
+
+  // Bright core
+  ctx.fillStyle = 'rgba(255,255,255,0.98)';
+  ctx.beginPath();
+  ctx.arc(x, y, Math.max(0.8, r * 0.7), 0, Math.PI * 2);
+  ctx.fill();
+
+  // Sparkle spikes (additive blend)
+  ctx.save();
+  ctx.translate(x, y);
+  ctx.rotate(rotation);
+  const prevComp = ctx.globalCompositeOperation;
+  ctx.globalCompositeOperation = 'lighter';
+
+  const len = r * 6;          // main spike length
+  const len2 = len * 0.55;    // diagonal spike length
+  ctx.lineWidth = Math.max(0.6, r * 0.4);
+  ctx.strokeStyle = 'rgba(255,255,255,0.85)';
+
+  // 0° / 90°
+  ctx.beginPath();
+  ctx.moveTo(-len, 0); ctx.lineTo(len, 0);
+  ctx.moveTo(0, -len); ctx.lineTo(0, len);
+  ctx.stroke();
+
+  // 45° / 135°
+  ctx.rotate(Math.PI / 4);
+  ctx.beginPath();
+  ctx.moveTo(-len2, 0); ctx.lineTo(len2, 0);
+  ctx.moveTo(0, -len2); ctx.lineTo(0, len2);
+  ctx.stroke();
+
+  ctx.globalCompositeOperation = prevComp;
+  ctx.restore();
+}
+
+// draw stars
+// draw stars
+function draw() {
+  ctx.clearRect(0, 0, width, height);
+
+  // base dark gradient
+  const base = ctx.createLinearGradient(0, 0, 0, height);
+  base.addColorStop(0, '#040438');
+  base.addColorStop(1, '#010124');
+  ctx.fillStyle = base;
+  ctx.fillRect(0, 0, width, height);
+
+  // bright-ish milky way wash
+  const glowX = width * 0.65;
+  const glowY = height * 0.3;
+  const innerRadius = 0;
+  const outerRadius = Math.sqrt(width * width + height * height) * 0.6; // big enough to cover canvas
+  const mw = ctx.createRadialGradient(glowX, glowY, innerRadius, glowX, glowY, outerRadius);
+  mw.addColorStop(0, 'rgba(200, 220, 255, 0.18)'); // center glow
+  mw.addColorStop(0.3, 'rgba(200, 220, 255, 0.08)'); // mid glow
+  mw.addColorStop(1, 'rgba(200, 220, 255, 0)'); // fade out
+  ctx.fillStyle = mw;
+  ctx.fillRect(0, 0, width, height);
+
+  // stars
+  for (let s of stars) {
+    s.phase += s.twinkleSpeed;
+    const flicker = 0.75 + 0.35 * Math.sin(s.phase); // slightly brighter + animated
+    const r = s.baseSize * flicker;
+    const rotation = Math.sin(s.phase * 1.5) * 0.12; // gentle sparkle rotation
+    drawSparklyStar(ctx, s.x, s.y, r, rotation);
+  }
+
+  requestAnimationFrame(draw);
+}
+requestAnimationFrame(draw);
+
+// ------------------------------
+// INTERACTION HANDLERS
+// ------------------------------
+canvas.addEventListener('pointerdown', e => {
+  const rect = canvas.getBoundingClientRect();
+  const x = e.clientX - rect.left;
+  const y = e.clientY - rect.top;
+
+  let nearest = null, dmin = Infinity;
+  for (let s of stars) {
+    const dx = s.x - x, dy = s.y - y;
+    const d = Math.sqrt(dx * dx + dy * dy);
+    if (d < dmin) { 
+      dmin = d; 
+      nearest = s; 
+    }
+  }
+
+  if (nearest && dmin <= Math.max(18, (width + height) / 150)) {
+    // Play a random sound
+    const randomSound = soundFiles[Math.floor(Math.random() * soundFiles.length)];
+    const audio = new Audio(randomSound);
+    audio.play();
+
+    // Open the modal for this star
+    openModal(nearest.memoryIndex);
+  }
+});
+// ------------------------------
+// MODAL LOGIC
+// ------------------------------
+const modal = document.getElementById('modal');
+const modalImg = document.getElementById('modalImg');
+const modalTitle = document.getElementById('modalTitle');
+const modalText = document.getElementById('modalText');
+const modalDate = document.getElementById('modalDate');
+const modalClose = document.getElementById('modalClose');
+const prevBtn = document.getElementById('prevBtn');
+const nextBtn = document.getElementById('nextBtn');
+let currentIndex = 0;
+function openModal(index) {
+  currentIndex = index;
+  const mem = memories[index];
+  modalImg.src = mem.img;
+  modalImg.alt = mem.title;
+  modalTitle.textContent = mem.title;
+  modalText.textContent = mem.text;
+  modalDate.textContent = mem.date;
+  modal.classList.add('open');
+  document.body.style.overflow = 'hidden';
+}
+function closeModal() {
+  modal.classList.remove('open');
+  document.body.style.overflow = '';
+}
+modalClose.addEventListener('click', closeModal);
+prevBtn.addEventListener('click', () => openModal((currentIndex - 1 + memories.length) % memories.length));
+nextBtn.addEventListener('click', () => openModal((currentIndex + 1) % memories.length));
+document.addEventListener('keydown', e => {
+  if (modal.classList.contains('open')) {
+    if (e.key === 'Escape') closeModal();
+    if (e.key === 'ArrowLeft') prevBtn.click();
+    if (e.key === 'ArrowRight') nextBtn.click();
+  }
+});
+document.querySelector('.modal-backdrop').addEventListener('click', closeModal);
+// ------------------------------
+// AUDIO TOGGLE
+// ------------------------------
+const audioToggle = document.getElementById('audioToggle');
+if (backgroundAudio) {
+  const audio = new Audio(backgroundAudio);
+  audio.loop = true; audio.volume = 0.55;
+  audioToggle.addEventListener('click', () => {
+    if (audio.paused) { audio.play(); audioToggle.textContent = 'Pause music'; }
+    else { audio.pause(); audioToggle.textContent = 'Play music'; }
+  });
+} else {
+  audioToggle.disabled = true;
+  audioToggle.style.opacity = 0.5;
+}
+// ------------------------------
+// SHUFFLE STARS
+// ------------------------------
+document.getElementById('shuffleBtn').addEventListener('click', createStars);
+</script>
+</body>
+</html>
